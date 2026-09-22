@@ -1,14 +1,12 @@
-use std::path::{PathBuf};
-use walkdir::WalkDir;
 use crate::app::VenvMetadata;
 use std::fs;
+use std::path::PathBuf;
+use walkdir::WalkDir;
 
 pub fn find_venvs<P: AsRef<std::path::Path>>(search_path: P) -> Vec<PathBuf> {
     let mut venvs = Vec::new();
 
-    let mut it = WalkDir::new(search_path)
-        .follow_links(false)
-        .into_iter();
+    let mut it = WalkDir::new(search_path).follow_links(false).into_iter();
 
     while let Some(entry) = it.next() {
         let entry = match entry {
@@ -28,7 +26,6 @@ pub fn find_venvs<P: AsRef<std::path::Path>>(search_path: P) -> Vec<PathBuf> {
     }
 
     venvs
-
 }
 
 pub fn parse_venv_metadata(venv_path: &std::path::Path) -> Option<VenvMetadata> {
@@ -49,5 +46,40 @@ pub fn parse_venv_metadata(venv_path: &std::path::Path) -> Option<VenvMetadata> 
             }
         }
     }
+    meta.packages = get_installed_packages(venv_path);
     Some(meta)
+}
+
+pub fn get_installed_packages(venv_path: &std::path::Path) -> Vec<String> {
+    let mut packages = Vec::new();
+    let lib_dir = venv_path.join("lib");
+
+    if let Ok(entries) = fs::read_dir(lib_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir()
+                && path
+                    .file_name()
+                    .map_or(false, |n| n.to_string_lossy().starts_with("python"))
+            {
+                let site_packages = path.join("site-packages");
+                if let Ok(pkg_entries) = fs::read_dir(site_packages) {
+                    for pkg in pkg_entries.flatten() {
+                        let name = pkg.file_name().to_string_lossy().into_owned();
+                        if name.ends_with(".dist-info") {
+                            let raw_name = &name[..name.len() - 10];
+                            if let Some((pkg_name, version)) = raw_name.rsplit_once('-') {
+                                packages.push(format!("{} == {}", pkg_name, version));
+                            } else {
+                                packages.push(raw_name.to_string());
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    packages.sort();
+    packages
 }

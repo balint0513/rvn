@@ -6,6 +6,7 @@ pub struct VenvMetadata {
     pub version: String,
     pub executable: String,
     pub include_system_packages: String,
+    pub packages: Vec<String>, //Stores parsed packages as strings
 }
 
 pub enum CurrentScreen {

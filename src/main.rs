@@ -1,26 +1,21 @@
 mod app;
-mod tui;
 mod scanner;
+mod tui;
 
 use crate::app::{App, CurrentScreen};
 use ratatui::layout::Rect;
-use std::{env};
-use std::path::{Path};
+use std::env;
+use std::path::Path;
 
-use ratatui::{
-    Frame, 
-    crossterm::{
-        self, event::KeyEventKind
-    }, 
-    layout::{
-        Constraint, Direction, Layout
-    }
-};
-use ratatui::widgets::{ListItem, List, Block, Borders, Paragraph};
 use crossterm::event::{self, Event, KeyCode};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
+use ratatui::{
+    Frame,
+    crossterm::{self, event::KeyEventKind},
+    layout::{Constraint, Direction, Layout},
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     color_eyre::install()?;
 
     let mut terminal = tui::init()?;
@@ -33,7 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     update_app_metadata(&mut app);
 
     while !app.should_quit {
-
         while let Ok((path, bytes)) = app.size_rx.try_recv() {
             if !app.venvs.is_empty() && app.venvs[app.selected_index] == path {
                 app.current_size = Some(format_bytes(bytes));
@@ -45,53 +39,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if event::poll(std::time::Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match app.current_screen{
-                    CurrentScreen::Main => match key.code {
-                        KeyCode::Char('q') => app.should_quit = true,
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            app.next();
-                            update_app_metadata(&mut app);
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            app.previous();
-                            update_app_metadata(&mut app);
-                        }
-                        KeyCode::Char('d') => {
-                            if !app.venvs.is_empty() {
-                                app.current_screen = CurrentScreen::ConfirmDelete;
+                    match app.current_screen {
+                        CurrentScreen::Main => match key.code {
+                            KeyCode::Char('q') => app.should_quit = true,
+                            KeyCode::Down | KeyCode::Char('j') => {
+                                app.next();
+                                update_app_metadata(&mut app);
                             }
-                        }
-                        KeyCode::Enter | KeyCode::Char('a') => {
-                            if !app.venvs.is_empty() {
-                                let target_path = app.venvs[app.selected_index].clone();
-                                if let Err(e) = activate_subshell(&target_path, &mut terminal) {
-                                    eprintln!("Error activating subshell: {}", e);
+                            KeyCode::Up | KeyCode::Char('k') => {
+                                app.previous();
+                                update_app_metadata(&mut app);
+                            }
+                            KeyCode::Char('d') => {
+                                if !app.venvs.is_empty() {
+                                    app.current_screen = CurrentScreen::ConfirmDelete;
                                 }
                             }
-                        }
-                        _ => {}
-                    },
-                    CurrentScreen::ConfirmDelete => match key.code {
-                        KeyCode::Char('y') | KeyCode::Char('Y') => {
-                            let path_to_remove = app.venvs.remove(app.selected_index);
-                            let _ = std::fs::remove_dir_all(&path_to_remove);
-
-                            if app.selected_index >= app.venvs.len() && !app.venvs.is_empty() {
-                                app.selected_index = app.venvs.len() - 1;
+                            KeyCode::Enter | KeyCode::Char('a') => {
+                                if !app.venvs.is_empty() {
+                                    let target_path = app.venvs[app.selected_index].clone();
+                                    if let Err(e) = activate_subshell(&target_path, &mut terminal) {
+                                        eprintln!("Error activating subshell: {}", e);
+                                    }
+                                }
                             }
-                            app.current_screen = CurrentScreen::Main;
-                            update_app_metadata(&mut app);
-                        }
-                        KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-                            app.current_screen = CurrentScreen::Main;
-                        }
-                        _ => {}
-                    },
+                            _ => {}
+                        },
+                        CurrentScreen::ConfirmDelete => match key.code {
+                            KeyCode::Char('y') | KeyCode::Char('Y') => {
+                                let path_to_remove = app.venvs.remove(app.selected_index);
+                                let _ = std::fs::remove_dir_all(&path_to_remove);
+
+                                if app.selected_index >= app.venvs.len() && !app.venvs.is_empty() {
+                                    app.selected_index = app.venvs.len() - 1;
+                                }
+                                app.current_screen = CurrentScreen::Main;
+                                update_app_metadata(&mut app);
+                            }
+                            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                                app.current_screen = CurrentScreen::Main;
+                            }
+                            _ => {}
+                        },
+                    }
                 }
             }
         }
     }
-}
 
     tui::restore(&mut terminal)?;
     Ok(())
@@ -119,7 +113,10 @@ fn update_app_metadata(app: &mut App) {
     }
 }
 
-fn activate_subshell(venv_path: &Path, terminal: &mut tui::TuiTerminal) -> Result<(), Box<dyn std::error::Error>> {
+fn activate_subshell(
+    venv_path: &Path,
+    terminal: &mut tui::TuiTerminal,
+) -> Result<(), Box<dyn std::error::Error>> {
     tui::restore(terminal)?;
 
     let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
@@ -127,8 +124,13 @@ fn activate_subshell(venv_path: &Path, terminal: &mut tui::TuiTerminal) -> Resul
     let bin_path = venv_path.join("bin");
     let new_path = format!("{}:{}", bin_path.display(), old_path);
 
-    println!("\x1b[1;32[+] Entering virtual environment subshell\x1b[0m: {}", venv_path.display());
-    println!("Type \x1b[1;33m'exit'\x1b[0m or hit Ctrl+D to return directly back to your TUI panel.\n");
+    println!(
+        "\x1b[1;32[+] Entering virtual environment subshell\x1b[0m: {}",
+        venv_path.display()
+    );
+    println!(
+        "Type \x1b[1;33m'exit'\x1b[0m or hit Ctrl+D to return directly back to your TUI panel.\n"
+    );
 
     std::process::Command::new(&shell)
         .env("PATH", new_path)
@@ -142,45 +144,86 @@ fn activate_subshell(venv_path: &Path, terminal: &mut tui::TuiTerminal) -> Resul
 fn draw_ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(30),
-            Constraint::Percentage(70),
-            ])
+        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(f.area());
-    
-    let items: Vec<ListItem> = app.venvs
+
+    let items: Vec<ListItem> = app
+        .venvs
         .iter()
         .enumerate()
         .map(|(i, path)| {
             let prefix = if i == app.selected_index { ">>" } else { "  " };
             ListItem::new(format!("{} {}", prefix, path.display()))
         })
-    .collect();
+        .collect();
 
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Virtual Environments"));
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Virtual Environments"),
+    );
     f.render_widget(list, chunks[0]);
 
     let details_content = if app.venvs.is_empty() {
         "No virtual environments found.".to_string()
     } else {
         let base_path = format!("Path: {}", app.venvs[app.selected_index].display());
-        let size_info = format!("Disk footprint: {}", app.current_size.as_deref().unwrap_or("Pending..."));
-        
+        let size_info = format!(
+            "Disk footprint: {}",
+            app.current_size.as_deref().unwrap_or("Pending...")
+        );
+
         let config_details = match &app.current_metadata {
-            Some(meta) => format!(
-                "Python Version: {}\nExecutable: {}\nInclude System Site Packages: {}",
-                if meta.version.is_empty() {"Unknown"} else {&meta.version},
-                if meta.executable.is_empty() {"Unknown"} else {&meta.executable},
-                if meta.include_system_packages.is_empty() {"Unknown"} else {&meta.include_system_packages},
-            ),
+            Some(meta) => {
+                let package_list = if meta.packages.is_empty() {
+                    " (No installed libraries found)".to_string()
+                } else {
+                    meta.packages
+                        .iter()
+                        .take(20)
+                        .map(|pkg| format!("  • {}", pkg))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                };
+
+                let overflow_note = if meta.packages.len() > 20 {
+                    format!("\n .. and {} more", meta.packages.len() - 20)
+                } else {
+                    String::new()
+                };
+
+                format!(
+                    "Python Version: {}\nExecutable: {}\nInclude System Site Packages: {}\n Installed packages: ({}):\n{}{}",
+                    if meta.version.is_empty() {
+                        "Unknown"
+                    } else {
+                        &meta.version
+                    },
+                    if meta.executable.is_empty() {
+                        "Unknown"
+                    } else {
+                        &meta.executable
+                    },
+                    if meta.include_system_packages.is_empty() {
+                        "Unknown"
+                    } else {
+                        &meta.include_system_packages
+                    },
+                    meta.packages.len(),
+                    package_list,
+                    overflow_note
+                )
+            }
             None => "Failed to read pyvenv.cfg for this environment target".to_string(),
         };
-        format !("{}\n{}\n{}", base_path, size_info, config_details)
+        format!("{}\n{}\n{}", base_path, size_info, config_details)
     };
 
-    let details = Paragraph::new(details_content)
-        .block(Block::default().borders(Borders::ALL).title("Environment details"));
+    let details = Paragraph::new(details_content).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Environment details"),
+    );
     f.render_widget(details, chunks[1]);
 
     if let CurrentScreen::ConfirmDelete = app.current_screen {
@@ -196,23 +239,21 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Percentage((100 - percent_y) / 2),
-                Constraint::Percentage(percent_y),
-                Constraint::Percentage((100 - percent_y) / 2),
-            ])
-            .split(r);
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
 
     Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage((100 - percent_x) / 2),
-                Constraint::Percentage(percent_x),
-                Constraint::Percentage((100 - percent_x) / 2),
-            ])
-            .split(popup_layout[1])[1]
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
 
 fn format_bytes(bytes: u64) -> String {
