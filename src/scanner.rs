@@ -60,7 +60,7 @@ pub fn get_installed_packages(venv_path: &std::path::Path) -> Vec<String> {
             if path.is_dir()
                 && path
                     .file_name()
-                    .map_or(false, |n| n.to_string_lossy().starts_with("python"))
+                    .is_some_and(|n| n.to_string_lossy().starts_with("python"))
             {
                 let site_packages = path.join("site-packages");
                 if let Ok(pkg_entries) = fs::read_dir(site_packages) {

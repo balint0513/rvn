@@ -24,7 +24,7 @@ RVN helps you manage existing virtual environments with a simple terminal interf
 - **Press enter or 'a' to activate selected environment.**
 - **Inside virtual environment use 'exit' to quit back to RVN TUI**
 - **Press 'd' to flag selected environment for deletion, on confirm page prompt 'y/Y' or 'n/N' for confirmation**
-- **Press 'q' to exit the TUI**
+- **Press 'q' or Ctrl+C to exit the TUI**
 
 - Keybind hints are shown in a footer bar inside the TUI; they update contextually (e.g. 'y/n' on the delete confirmation screen).
 
