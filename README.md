@@ -26,7 +26,7 @@ RVN helps you manage existing virtual environments with a simple terminal interf
 - **Press 'd' to flag selected environment for deletion, on confirm page prompt 'y/Y' or 'n/N' for confirmation**
 - **Press 'q' to exit the TUI**
 
-- Tooltips inside TUI coming soon...  
+- Keybind hints are shown in a footer bar inside the TUI; they update contextually (e.g. 'y/n' on the delete confirmation screen).
 
 ## Installation
 

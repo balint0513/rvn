@@ -1,9 +1,12 @@
 mod app;
+mod help;
 mod scanner;
 mod tui;
 
 use crate::app::{App, CurrentScreen};
 use ratatui::layout::Rect;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
 use std::env;
 use std::path::Path;
 
@@ -142,10 +145,30 @@ fn activate_subshell(
 }
 
 fn draw_ui(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
-        .split(f.area());
+    let [main_area, footer_area] = Layout::vertical([
+        Constraint::Min(0),
+        Constraint::Length(1),
+    ]).areas(f.area());
+
+    let chunks = Layout::horizontal([
+        Constraint::Percentage(30),
+        Constraint::Percentage(70),
+    ]).split(main_area);
+
+    let mut footer_spans: Vec<Span> = Vec::new();
+    for (i, kb) in help::hints(&app.current_screen).iter().enumerate() {
+        if i > 0 {
+            footer_spans.push(Span::styled("  ·  ", Style::default().fg(Color::DarkGray)));
+        }
+        footer_spans.push(Span::styled(
+            kb.keys,
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
+        footer_spans.push(Span::raw(" "));
+        footer_spans.push(Span::styled(kb.desc, Style::default().fg(Color::DarkGray)));
+    }
 
     let items: Vec<ListItem> = app
         .venvs
@@ -225,6 +248,8 @@ fn draw_ui(f: &mut Frame, app: &mut App) {
             .title("Environment details"),
     );
     f.render_widget(details, chunks[1]);
+
+    f.render_widget(Paragraph::new(Line::from(footer_spans)), footer_area);
 
     if let CurrentScreen::ConfirmDelete = app.current_screen {
         let popup_area = centered_rect(60, 20, f.area());
